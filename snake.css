@@ -1,0 +1,10 @@
+.snake_column_div {
+	background-color: #8CEA00;
+	float: left;
+	/*padding: 2px 2px 2px 4px;*/
+	border:2px solid #EBD6D6;
+}
+
+.snake_row_div {
+	clear: both;
+}

@@ -1,0 +1,423 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<!-- 这个不指定，在浏览器中打开的时候会出现乱码 -->
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+		<script type="text/javascript" src="jquery-1.12.2.js"></script>
+		<script type="text/javascript" src="snake.js"></script>
+		<link rel="stylesheet" type="text/css" href="snake.css">
+	</head>
+	<body>
+		<div id="container">
+			
+		</div>
+		
+	</body>
+
+	<script type="text/javascript">
+	$(function(){
+
+		var config = {
+			row:10,
+			column:10,
+			snake_length:5,
+			default_speed:900,
+			direction:0,
+			grid:[],
+			snake_color:"#2828FF",
+			snake_head_color:"#6C3365",
+			apple_color:"#FF0000",
+			background_color:"#8CEA00",
+			div_array:[],
+			go_timeoutId:null,
+			apple:{
+				x:0,
+				y:0
+			}
+		};
+
+		var snake = {
+			snake_head:{
+				x:0,
+				y:0
+			},
+			direction:config.direction,
+			length:config.snake_length,
+			speed:config.default_speed,
+			snake_color:config.snake_color,
+			snake_head_color:config.snake_head_color,
+			body_array:[],
+			//eatApple:0,
+			eatAppleNum:0,
+			eatApple:function(){
+				this.eatAppleNum++;
+				console.log("eat");
+				console.log("snake length is "+this.length);
+				this.length++;
+				if(this.eatAppleNum%3 == 0) {
+					this.speed-=100;
+
+				}
+			}
+		};
+
+		(function init() {
+			// 这两个参数不一定会都生效
+
+			generateGrid(config.row,config.column);
+
+			console.log("1秒后游戏开始");
+
+			// 这个地方可以写startGame,
+			// 如果写成startGame()就变成直接运行了
+			// 如果startGame 是有参数的方法，那么当当上参数的时候就又会变成立即运行的
+			// 这个地方的方法就是不可以带括号的，只要带括号就会立即运行
+			var timeoutId = setTimeout(function() {
+				startGame();
+			},1000);
+			// window.clearTimeout(timeoutId);
+		})();
+
+		function startGame() {
+			console.log("游戏开始了");
+			snake_init();
+			console.log(snake.body_array);
+			createApple();
+			userOpearte();
+			config.go_timeoutId = setTimeout(snake_go,config.default_speed);
+		}
+
+		function getRandomInt(min, max) {
+  			return Math.floor(Math.random() * (max - min)) + min;
+		}
+
+		// 创建蛇吃的果子
+		function createApple() {
+
+			var remained_count = config.row*config.column-snake.length;
+			var apple_num = getRandomInt(1,remained_count);
+			var temp_count=0;
+			for(var i=0;i<config.row;i++){
+				for(var j=0;j<config.column;j++){
+					if(0 == config.grid[i][j]) {
+						++temp_count;
+						if(temp_count == apple_num) {
+							// 找到了苹果的位置
+							config.grid[i][j] == 2;
+							config.apple.x=i;
+							config.apple.y=j;
+							console.log("apple at "+i+":"+j);
+							config.div_array[i][j].css("background-color",config.apple_color);
+							break;
+						}
+					} else {
+						continue;
+					}
+				}
+			}
+		}
+
+		// 初始化蛇
+		function snake_init() {
+			var head_x,head_y;
+			// 蛇头不可以在四个角
+			do {
+				head_x=getRandomInt(0,config.row-1);
+				head_y=getRandomInt(0,config.column-1);
+			} while((0 == head_x&&0 == head_y)||
+					(0 == head_x&&config.column-1==head_y)||
+					(config.row-1==head_x&&0 == head_y)||
+					(config.row-1==head_x&&config.column-1==head_y))
+			// 蛇头的位置
+			snake.snake_head.x=head_x;
+			snake.snake_head.y=head_y;
+
+			console.log("snake head is "+snake.snake_head.x,snake.snake_head.y);
+
+			var direction_array=[1,1,1,1];
+			// 蛇身的排列方向需要做一下判断
+			// 1.四边的特殊处理
+			if(head_x==0||head_x == config.row-1) {
+				// 在第一行，最后一行，蛇头不可以向上开局，向下开局
+				direction_array[0]=0;
+				direction_array[2]=0;
+			} else if(head_y==0||head_y==config.column-1) {
+				// 在第一列，最后一列，蛇头不可以向左开局，向右开局
+				direction_array[1]=0;
+				direction_array[3]=0;
+			} 
+				
+			// 2. 蛇身长度是否够排列的问题
+			if((config.row-head_y)<config.snake_length) {
+				// 蛇头不可以向左
+				direction_array[3]=0;
+			} 
+			if(head_y<config.snake_length) {
+				// 蛇头不可以向右
+				direction_array[1]=0;
+			}
+			if (config.column-head_x<config.snake_length) {
+				// 蛇头不可以向上
+				direction_array[0]=0;
+			}
+			if(head_x<config.snake_length) {
+				// 蛇头不可以向下
+				direction_array[2]=0;
+			}
+			
+			var direction_count=0;
+			for(var i=0;i<direction_array.length;i++) {
+				direction_count+=direction_array[i];
+			}
+			
+			var direction = getRandomInt(1,direction_count);
+			console.log("1 " +direction);
+			console.log("2 "+direction_array);
+			direction_count=0;
+			for(var i=0;i<direction_array.length;i++) {
+				direction_count+=direction_array[i];
+				if(direction == direction_count ) {
+					// 矫正方向
+					direction=i;
+					break;
+				} else {
+					continue;
+				}
+			}
+			console.log("init direction is "+direction);
+			switch(direction) {
+				case 0:
+				// 上
+				for(var i=0;i<config.snake_length;i++) {
+					config.grid[head_x+i][head_y]=1;
+					config.div_array[head_x+i][head_y]
+					config.div_array[head_x+i][head_y].css("background-color",snake.snake_color);
+					// 保存蛇的身体
+					snake.body_array.push([head_x+i,head_y]);
+				}
+				break;
+				
+				case 1:
+				// 右
+				for(var i=0;i<config.snake_length;i++) {
+					config.grid[head_x][head_y-i];
+					config.div_array[head_x][head_y-i].css("background-color",snake.snake_color);
+					// 保存蛇的身体
+					snake.body_array.push([head_x,head_y-i]);
+				}
+				break;
+				
+				case 2:
+				// 下
+				for(var i=0;i<config.snake_length;i++) {
+					config.grid[head_x-i][head_y];
+					config.div_array[head_x-i][head_y].css("background-color",snake.snake_color);
+					// 保存蛇的身体
+					snake.body_array.push([head_x-i,head_y]);
+				}
+				break;
+				
+				case 3:
+				// 左
+				for(var i=0;i<config.snake_length;i++) {
+					config.grid[head_x][head_y+i];
+					config.div_array[head_x][head_y+i].css("background-color",snake.snake_color);
+					// 保存蛇的身体
+					snake.body_array.push([head_x,head_y+i]);
+				}
+				break;
+				
+			}
+			// 设置蛇的前进方向
+			snake.direction=direction; 
+			console.log("init direction"+snake.direction);
+			// 重新设置一下蛇头的颜色
+			config.div_array[head_x][head_y].css("background-color",snake.snake_head_color);
+		}
+
+		function userOpearte() {
+			// window.addEventListener("keydown", function (event) {});
+			console.log("开始键盘监听");
+			// 加到指定的上面为什么不行
+			$(document).keydown(function (event) {
+			    //console.log(event.keyCode);
+			    switch(event.keyCode) {
+			    	case 38:
+			    	// 上
+			    	snake.direction=0;
+			    	//console.log("up");
+			    	break;
+			    	case 37:
+			    	// 左
+			    	snake.direction=3;
+			    	//console.log("left");
+			    	break;
+			    	case 39:
+			    	// 右
+			    	snake.direction=1;
+			    	//console.log("right");
+			    	break;
+			    	case 40:
+			    	// 下
+			    	snake.direction=2;
+			    	//console.log("down");
+			    	break;
+			    	default:
+			    	// 其他的不响应
+			    }
+			});
+		}
+
+		function decorateSnake(removed_div) {
+			if(null != removed_div) {
+				config.div_array[removed_div[0]][removed_div[1]].css("background-color",config.background_color);
+			}
+			config.div_array[snake.body_array[0][0]][snake.body_array[0][1]].css("background-color",snake.snake_head_color);
+			for(var i=1;i<snake.body_array.length;i++) {
+				config.div_array[snake.body_array[i][0]][snake.body_array[i][1]].css("background-color",snake.snake_color);
+			}
+		}
+
+		// 蛇开始自己向前运动,以当前的方向向前移动一格
+		// 蛇爬过的地方 肯定会变成1
+		function snake_go() {
+			if((0 == snake.snake_head.x&&snake.direction==0)||
+				(config.column-1 == snake.snake_head.y&&snake.direction==1)||
+				(config.row-1 == snake.snake_head.x&&snake.direction==2)||
+				(0 == snake.snake_head.y&&snake.direction==3)) {
+				gameOver();
+			} else {
+				var tail;
+				switch(snake.direction) {
+				case 0:
+				snake.snake_head.x=snake.snake_head.x-1;
+				snake.body_array.reverse();
+				config.grid[snake.snake_head.x][snake.snake_head.y]=1;
+				if(!checkApple()) {
+					tail = snake.body_array.shift();
+					config.grid[tail[0]][tail[1]]=0;
+				}
+				snake.body_array.push([snake.snake_head.x,snake.snake_head.y]);
+				snake.body_array.reverse();
+				
+				break;
+				case 1:
+				snake.snake_head.y=snake.snake_head.y+1;
+				config.grid[snake.snake_head.x][snake.snake_head.y]=1;
+				snake.body_array.reverse();
+				if(!checkApple()) {
+					tail = removed_div= snake.body_array.shift();
+					config.grid[tail[0]][tail[1]]=0;
+				}
+				snake.body_array.push([snake.snake_head.x,snake.snake_head.y]);
+				snake.body_array.reverse();
+				break;
+				case 2:
+				snake.snake_head.x=snake.snake_head.x+1;
+				snake.body_array.reverse();
+				config.grid[snake.snake_head.x][snake.snake_head.y]=1;
+				if(!checkApple()) {
+					tail= snake.body_array.shift();
+					config.grid[tail[0]][tail[1]]=0;
+				}
+				snake.body_array.push([snake.snake_head.x,snake.snake_head.y]);
+				snake.body_array.reverse();
+				break;
+				case 3:
+				snake.snake_head.y=snake.snake_head.y-1;
+				snake.body_array.reverse();
+				config.grid[snake.snake_head.x][snake.snake_head.y]=1;
+				if(!checkApple()) {
+					tail= snake.body_array.shift();
+					config.grid[tail[0]][tail[1]]=0;
+				}
+				snake.body_array.push([snake.snake_head.x,snake.snake_head.y]);
+				snake.body_array.reverse();
+				break;
+				}
+				//console.log(snake.body_array);
+				if(checkApple()) {
+					eatApple();
+					decorateSnake(null);
+					createApple();
+				} else {
+					decorateSnake(tail);
+				}
+				
+			}
+			//console.log("current speed = "+snake.speed);
+			config.go_timeoutId = setTimeout(snake_go,snake.speed);
+		//	console.log(config.go_timeoutId);
+		}
+
+		// 决定了如何吃苹果
+		function eatApple() {
+			snake.eatApple();
+			
+		}
+
+		// 检查是否吃掉了苹果
+		function checkApple() {
+			if((config.apple.x==snake.snake_head.x)
+				&&(config.apple.y==snake.snake_head.y)) {
+				// 吃到了苹果
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		function gameOver() {
+			console.log(config.go_timeoutId);
+		//	window.clearTimeout(config.go_timeoutId);
+			console.log("游戏结束，你输了");
+		}
+
+		function generateGrid(row,column) {
+			for(var i=0;i<row;i++){
+				var $row_div=$("<div>");
+				decorateDiv($row_div,row,1)
+				$("#container").append($row_div);
+				config.grid[i]=[];
+				config.div_array[i]=[];
+				for(var j=0;j<column;j++) {
+					// 初始化坐标系 0表示为空
+					var $column_div=$("<div>");
+					// $column_div.html(0);
+					config.grid[i][j]=0;
+					config.div_array[i][j]=$column_div;
+					decorateDiv($column_div,column,2);
+					$row_div.append($column_div);
+				}
+			}
+		}
+
+		function decorateDiv(div,count,flag) {
+			if(1 == flag) {
+				// 行
+				div.addClass("snake_row_div");
+				div.css("height",Math.floor((getWWH().height-4*2*count)/count));
+			} else if( 2 == flag) {
+				// 列
+			 	div.addClass("snake_column_div");
+
+			 	var width = Math.floor((getWWH().width-4*2*count)/count);
+			 	var height=Math.floor((getWWH().height-4*2*count)/count);
+
+			 	div.css("width",Math.min(width,height));
+			 	div.css("height",Math.min(width,height));
+			}
+		}
+
+		function getWWH() {
+			var width=window.innerWidth;
+			var height=window.innerHeight;
+			
+			return wwh={
+				width:width,
+				height:height
+			}
+		}
+	})
+	</script>
+</html>
